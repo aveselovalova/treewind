@@ -4,31 +4,42 @@ import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { LightingEffect, Layer } from '@deck.gl/core';
 import { StaticMap } from 'react-map-gl';
-import { csv } from 'd3';
+import * as d3 from 'd3';
 
 import './TreeMap.scss';
 
 import { ICoordinate } from '../../utils/interfaces';
 import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapboxSize } from '../../utils/map';
+import { colors } from '../../utils/colors';
 
 const TreeMap: React.FunctionComponent = () => {
 	const [layers, setLayers] = useState<Layer<any>[]>([]);
 
 	useEffect(() => {
 		import('../../data/fullTreesBerlin.csv').then(async csvTrees => {
-			await csv(csvTrees.default, (data: any) => ({
-				latitude: +data.Y,
-				longitude: +data.X,
-			})).then((scatterplotData: ICoordinate[]) => {
-				setLayers([
-					new ScatterplotLayer({
-						data: scatterplotData,
-						getColor: [144, 238, 144],
-						getPosition: point => [point.longitude, point.latitude],
-						radiusScale: 4,
-					}),
-				]);
-			});
+			await d3
+				.csv(csvTrees.default, (data: any) => ({
+					latitude: +data.Y,
+					longitude: +data.X,
+					color: (data.GATTUNG || '').toLocaleLowerCase(),
+				}))
+				.then((scatterplotData: ICoordinate[]) => {
+					// TODO: prepare data;
+					const uniqueTree: string[] = d3
+						.map(scatterplotData, tree => tree.color || '')
+						.keys()
+						.filter(tree => tree);
+					// TODO: use localstorage;
+					colors.generateColors(uniqueTree);
+					setLayers([
+						new ScatterplotLayer({
+							data: scatterplotData,
+							getColor: tree => colors.getColor(tree.color),
+							getPosition: tree => [tree.longitude, tree.latitude],
+							radiusScale: 4,
+						}),
+					]);
+				});
 		});
 	}, []);
 
