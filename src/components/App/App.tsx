@@ -1,6 +1,12 @@
 import React, { FunctionComponent } from 'react';
 import './App.scss';
 
-const App: FunctionComponent = () => <div className='app'>App</div>;
+import TreeMap from '../TreeMap/TreeMap';
+
+const App: FunctionComponent = () => (
+	<div className='app'>
+		<TreeMap />
+	</div>
+);
 
 export default App;
