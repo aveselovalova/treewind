@@ -14,6 +14,13 @@ const chooseQuarter = (degree: number): Quarter => {
 };
 
 export const getWindOffset = (windPower: number, radians: number): ICoordinate => {
+	const degree = calculateWebDegree(radians);
+	if (degree < 0) {
+		radians = (180 + degree) * (Math.PI / 180);
+	}
+	if (degree > 180) {
+		radians = (degree - 360) * (Math.PI / 180);
+	}
 	const windAbsRadians = Math.abs(radians);
 	const xOffset = windPower * Math.sqrt(windAbsRadians);
 	const yOffset = windPower * Math.sqrt(1 / windAbsRadians);
