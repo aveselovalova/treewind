@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
-import { ScatterplotLayer } from '@deck.gl/layers';
+import { LineLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { LightingEffect, Layer } from '@deck.gl/core';
 import { StaticMap } from 'react-map-gl';
 import * as d3 from 'd3';
@@ -10,9 +10,13 @@ import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapbox
 import { colors } from 'utils/colors';
 
 import Compass from 'components/Compass/Compass';
+import { getTargetOffsetPosition } from '../../utils/helpers';
 
 const TreeMap: React.FunctionComponent = () => {
-	const [layers, setLayers] = useState<Layer<any>[]>([]);
+	const [targetOffset, setTargetOffset] = useState<ICoordinate>();
+	const [scatterplotData, setScatterplotData] = useState<ICoordinate[]>();
+	const [wind, setWind] = useState<Layer<any>>(new LineLayer({}));
+	const [trees, setTrees] = useState<Layer<any>>(new ScatterplotLayer({}));
 
 	useEffect(() => {
 		import('resources/data/fullTreesBerlin.csv').then(async csvTrees => {
@@ -24,31 +28,51 @@ const TreeMap: React.FunctionComponent = () => {
 				}))
 				.then((scatterplotData: ICoordinate[]) => {
 					// TODO: prepare data;
+					setScatterplotData(scatterplotData);
 					const uniqueTree: string[] = d3
 						.map(scatterplotData, tree => tree.color || '')
 						.keys()
 						.filter(tree => tree);
 					// TODO: use localstorage;
 					colors.generateColors(uniqueTree);
-					setLayers([
+					setTrees(
 						new ScatterplotLayer({
 							data: scatterplotData,
 							getColor: tree => colors.getColor(tree.color),
 							getPosition: tree => [tree.longitude, tree.latitude],
 							radiusScale: 4,
-						}),
-					]);
+						})
+					);
 				});
 		});
 	}, []);
 
+	useEffect(() => {
+		if (!targetOffset || !wind.props.data) {
+			return;
+		}
+		setWind(
+			new LineLayer({
+				id: 'flight-paths',
+				data: scatterplotData,
+				opacity: 0.8,
+				getSourcePosition: d => [d.longitude, d.latitude],
+				getTargetPosition: d => getTargetOffsetPosition(d, targetOffset),
+				getColor: tree => colors.getColor(tree.color),
+				updateTriggers: {
+					getTargetPosition: d => getTargetOffsetPosition(d, targetOffset),
+				},
+			})
+		);
+	}, [targetOffset]);
+
 	return (
 		<>
-			<Compass />
+			<Compass callback={setTargetOffset} />
 			<DeckGL
 				{...deckGLSize}
 				initialViewState={initialViewState}
-				layers={layers}
+				layers={[trees, wind]}
 				effects={[new LightingEffect({})]}
 				controller
 			>
