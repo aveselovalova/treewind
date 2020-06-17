@@ -1,7 +1,7 @@
 import React, { FunctionComponent } from 'react';
 import './App.scss';
 
-import TreeMap from '../TreeMap/TreeMap';
+import TreeMap from 'components/TreeMap/TreeMap';
 
 // TODO: preloader
 const App: FunctionComponent = () => (

@@ -15,15 +15,15 @@
       "dom.iterable",
       "esnext"
     ],
-    "strict": true,
+    "strict": false,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": "src"
   },
   "include": [
     "src",
     "src/custom.d.ts"
   ]
 }
-

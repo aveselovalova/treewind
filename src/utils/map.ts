@@ -12,8 +12,8 @@ const MAPBOX_THEME = 'mapbox://styles/mapbox/dark-v10';
 const initialViewState = {
 	...mapCenter,
 	zoom: 14,
-	pitch: 30,
-	bearing: -30,
+	pitch: 0,
+	bearing: 0,
 };
 
 const deckGLSize: ISize = {

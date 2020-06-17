@@ -11,6 +11,7 @@ export const colors = (function () {
 
 	return {
 		generateColors: (trees: string[]) => {
+			// TODO: uniques
 			trees.forEach((treeName: string) => {
 				treeColors.push({
 					name: treeName,

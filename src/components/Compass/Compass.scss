@@ -1,0 +1,29 @@
+.compass {
+	position: fixed;
+	top: 0;
+	left: 0;
+	background: url(../../resources/icons/compass-rose.svg) center no-repeat;
+	background-origin: content-box;
+	width: 130px;
+	height: 130px;
+	z-index: 10000;
+	padding: 10px;
+
+	&__rose {
+		position:absolute;
+		width: 115px;
+		height: 115px;
+		top: 16px;
+		left: 16px;
+	}
+
+	&__pointer {
+		position: absolute;
+		width: 30px;
+		height: 100%;
+		top: -43%;
+		right: 31%;
+		transform: rotate(90deg);
+		// transform: translate(50%, 50%) rotate(90deg) ;
+	}
+}
