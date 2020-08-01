@@ -3,8 +3,8 @@ import React, { useState, useRef } from 'react';
 import './Compass.scss';
 
 import { Icon } from 'components/Icon/Icon';
-import { ICoordinate } from '../../utils/interfaces';
-import { calculateWebDegree, getWindOffset } from '../../utils/helpers';
+import { ICoordinate } from '../../helpers/interfaces';
+import { calculateWebDegree, getWindOffset } from '../../helpers/utils';
 
 interface ICompassProps {
 	callback: (offset: ICoordinate) => void;
