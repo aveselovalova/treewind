@@ -1,0 +1,4 @@
+export const COORDINATES_OFFSET = 0.0001;
+export const LATITUDE_WIND_INCREMENT = 0.0002;
+
+export const MIN_POINTS_IN_POLYGON = 5;
