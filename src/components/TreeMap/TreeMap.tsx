@@ -10,7 +10,7 @@ import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapbox
 import { colors } from 'helpers/colors';
 
 import Compass from 'components/Compass/Compass';
-import { getTargetOffsetPosition, getWindLayerCoordinates } from '../../helpers/utils';
+import { getTargetOffsetPosition, getWindLayerCoordinates, getWindShadow } from '../../helpers/utils';
 
 const TreeMap: React.FunctionComponent = () => {
 	const [targetOffset, setTargetOffset] = useState<ICoordinate>();
@@ -20,7 +20,10 @@ const TreeMap: React.FunctionComponent = () => {
 	const [polyWind, setPolyWind] = useState<Layer<any>>(
 		new PolygonLayer({
 			id: 'poly-layers',
-			data: [{ contours: getWindLayerCoordinates(13.3058, 52.6342), name: 'tmp_example' }],
+			data: [
+				{ contours: getWindLayerCoordinates(13.3058, 52.6342, 1), name: 'tmp_example' },
+				{ contours: getWindShadow(13.3058, 52.6342, 1), name: 'tmp_example2' },
+			],
 			stroked: false,
 			filled: true,
 			extruded: false,
