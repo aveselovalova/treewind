@@ -53,11 +53,11 @@ export const getTargetOffsetPosition = (point: ICoordinate, offset?: ICoordinate
 
 const fibonacci = (n: number) => (n <= 1 ? n : fibonacci(n - 1) + fibonacci(n - 2));
 
-const generateFibonacciLongitudes = (longitude: number, windPower = 1): number[] => {
+const generateFibonacciLongitudes = (longitude: number, windPower = 0): number[] => {
 	let fibNum = 3;
 	const longitudes: number[] = [longitude];
 	let arrIndex = 1;
-	while (fibNum < MIN_POINTS_IN_POLYGON + (windPower >= 1 ? windPower : 0)) {
+	while (fibNum < MIN_POINTS_IN_POLYGON + (windPower !== 0 ? windPower : 0)) {
 		longitudes.push(fibonacci(fibNum) * COORDINATES_OFFSET + longitudes[arrIndex - 1]);
 		fibNum++;
 		arrIndex++;
@@ -65,35 +65,69 @@ const generateFibonacciLongitudes = (longitude: number, windPower = 1): number[]
 	return longitudes.splice(1);
 };
 
-export const getWindLayerCoordinates = (longitude: number, latitude: number) => {
-	// пр часовой стрелке
-	const longitudes = generateFibonacciLongitudes(longitude);
-	const longitudesCount = longitudes.length - 1;
-	const generateLeftFunction = (polygon: number[][], increment: number): number[][] => {
-		const updatedPoly = polygon;
-		longitudes.forEach((lon, key) => {
-			// значения должны повторяться для выравнивания графика функции
-			updatedPoly.push([lon, key === longitudesCount ? updatedPoly[key][1] : updatedPoly[key][1] + increment]);
-		});
-		return updatedPoly;
-	};
-	const generateRightFunction = (polygon: number[][]): number[][] => {
-		const updatedPoly = polygon;
-		for (let i = longitudesCount; i >= 0; i--) {
-			let item = latitude - LATITUDE_WIND_INCREMENT * i;
-			if (i === longitudesCount - 1) {
-				// значения должны повторяться для выравнивания графика функции
-				item = updatedPoly[updatedPoly.length - 1][1];
-			} else if (i < longitudesCount - 1) {
-				item = latitude - LATITUDE_WIND_INCREMENT * (i + 1);
+const generateLeftFunction = (
+	longitudes: number[],
+	polygon: number[][],
+	increment: number,
+	shadow?: boolean
+): number[][] => {
+	const updatedPoly = polygon;
+	longitudes.forEach((lon, key) => {
+		// значения должны повторяться для выравнивания графика функции
+		if (shadow) {
+			if (key !== longitudes.length - 1) {
+				updatedPoly.push([lon, updatedPoly[key][1] + increment]);
 			}
-			updatedPoly.push([longitudes[i], item]);
+		} else {
+			updatedPoly.push([
+				lon,
+				key === longitudes.length - 1 ? updatedPoly[key][1] : updatedPoly[key][1] + increment,
+			]);
 		}
-		return updatedPoly;
-	};
+	});
+	return updatedPoly;
+};
+const generateRightFunction = (
+	longitudes: number[],
+	polygon: number[][],
+	latitude: number,
+	shadow?: boolean
+): number[][] => {
+	const updatedPoly = polygon;
+	const longitudesCount = longitudes.length - 1;
+	for (let i = longitudesCount; i >= 0; i--) {
+		let item = latitude - LATITUDE_WIND_INCREMENT * i;
+		if (i === longitudesCount - 1 && !shadow) {
+			// значения должны повторяться для выравнивания графика функции
+			item = updatedPoly[updatedPoly.length - 1][1];
+		} else if (i < longitudesCount - 1) {
+			item = latitude - LATITUDE_WIND_INCREMENT * (i + 1);
+		}
+		updatedPoly.push([longitudes[i], item]);
+	}
+	return updatedPoly;
+};
 
+export const getWindLayerCoordinates = (longitude: number, latitude: number, windPower = 0) => {
+	// пр часовой стрелке
+	const longitudes = generateFibonacciLongitudes(longitude, windPower);
 	return [
-		...generateRightFunction(generateLeftFunction([[longitude, latitude]], LATITUDE_WIND_INCREMENT)),
+		...generateRightFunction(
+			longitudes,
+			generateLeftFunction(longitudes, [[longitude, latitude]], LATITUDE_WIND_INCREMENT),
+			latitude
+		),
 		[longitude, latitude],
 	];
+};
+
+export const getWindShadow = (longitude: number, latitude: number, windPower = 0) => {
+	// пр часовой стрелке
+	const longitudes = generateFibonacciLongitudes(longitude, windPower);
+	const d = getWindLayerCoordinates(longitude, latitude, windPower);
+	console.log(d);
+	console.log(~~(d.length / 2));
+	const middle = ~~(d.length / 2);
+	console.log([...d.slice(0, middle - 1), ...d.slice(middle + 1)]);
+	return [...d.slice(0, middle - 1), ...d.slice(middle + 1)];
 };

@@ -24,4 +24,4 @@ yarn-debug.log*
 yarn-error.log*
 
 *.d.ts
-/src/utils/mapToken.ts
+/src/helpers/mapToken.ts
