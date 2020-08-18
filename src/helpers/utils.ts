@@ -108,17 +108,25 @@ const generateRightFunction = (
 	return updatedPoly;
 };
 
+const toRadians = degree => degree * (Math.PI / 180);
+
+function rotate(treeLon, treeLat, x, y, degree) {
+	const radians = toRadians(degree),
+		cos = Math.cos(radians),
+		sin = Math.sin(radians),
+		nx = cos * (x - treeLon) + sin * (y - treeLat) + treeLon,
+		ny = cos * (y - treeLat) - sin * (x - treeLon) + treeLat;
+	return [nx, ny];
+}
+
 export const getWindLayerCoordinates = (longitude: number, latitude: number, windPower = 0) => {
 	// пр часовой стрелке
 	const longitudes = generateFibonacciLongitudes(longitude, windPower);
-	const a = [
-		...generateRightFunction(
-			longitudes,
-			generateLeftFunction(longitudes, [[longitude, latitude]], LATITUDE_WIND_INCREMENT),
-			latitude
-		),
-		[longitude, latitude],
-	];
+
+	const l = generateLeftFunction(longitudes, [[longitude, latitude]], LATITUDE_WIND_INCREMENT);
+	const r = generateRightFunction(longitudes, l, latitude);
+	const rotated = r.map(a => rotate(longitude, latitude, a[0], a[1], -45)); // angle has +90 degrees offset
+	const a = [...rotated, [longitude, latitude]];
 	return a.map(item => [item[1], item[0]]);
 };
 
