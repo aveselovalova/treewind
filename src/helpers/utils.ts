@@ -111,7 +111,7 @@ const generateRightFunction = (
 export const getWindLayerCoordinates = (longitude: number, latitude: number, windPower = 0) => {
 	// пр часовой стрелке
 	const longitudes = generateFibonacciLongitudes(longitude, windPower);
-	return [
+	const a = [
 		...generateRightFunction(
 			longitudes,
 			generateLeftFunction(longitudes, [[longitude, latitude]], LATITUDE_WIND_INCREMENT),
@@ -119,6 +119,7 @@ export const getWindLayerCoordinates = (longitude: number, latitude: number, win
 		),
 		[longitude, latitude],
 	];
+	return a.map(item => [item[1], item[0]]);
 };
 
 export const getWindShadow = (longitude: number, latitude: number, windPower = 0) => {
