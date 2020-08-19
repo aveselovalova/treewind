@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
-import { LineLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { ScatterplotLayer } from '@deck.gl/layers';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import { LightingEffect, Layer } from '@deck.gl/core';
 import { StaticMap } from 'react-map-gl';
@@ -12,44 +12,19 @@ import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapbox
 import { colors } from 'helpers/colors';
 
 import Compass from 'components/Compass/Compass';
-import { getTargetOffsetPosition, getWindLayerCoordinates } from '../../helpers/utils';
+import { getWindLayerCoordinates } from '../../helpers/utils';
 
-const { longitude, latitude } = initialViewState;
-const WIND_POWER = 10; // 1 - 10
-const geo3res = 11;
-const h3Index = h3.geoToH3(latitude, longitude, geo3res);
-const polygon = getWindLayerCoordinates(longitude, latitude, WIND_POWER);
-const hexagons = h3.polyfill(polygon, geo3res);
-const data = hexagons.map(hex => ({
-	mean: 73.333,
-	opacity: 255 - h3.h3Distance(h3Index, hex) * (100 / WIND_POWER),
-	hex: hex,
-}));
+const WIND_POWER = 2; // 1 - 10
+const hexSize = 12; // 14 - smallest
 
 const TreeMap: React.FunctionComponent = () => {
-	const [targetOffset, setTargetOffset] = useState<ICoordinate>();
+	const [targetOffset, setTargetOffset] = useState<number>();
 	const [scatterplotData, setScatterplotData] = useState<ICoordinate[]>();
-	const [wind, setWind] = useState<Layer<any>>(new LineLayer({}));
 	const [trees, setTrees] = useState<Layer<any>>(new ScatterplotLayer({}));
-	const [polyWind] = useState<any>(
-		new H3HexagonLayer({
-			id: 'h3-cluster-layer',
-			data: [...data],
-			pickable: true,
-			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-			// @ts-ignore
-			wireframe: false,
-			filled: true,
-			extruded: true,
-			elevationScale: 20,
-			getHexagon: d => d.hex,
-			getFillColor: d => [255, 255, 0, d.opacity],
-			getElevation: 0,
-		})
-	);
+	const [polyWind, setPolyWind] = useState<any>(null);
 
 	useEffect(() => {
-		import('../../resources/data/fullTreesBerlin.csv').then(async csvTrees => {
+		import('../../resources/data/out.csv').then(async csvTrees => {
 			await d3
 				.csv(csvTrees.default, (data: any) => ({
 					latitude: +data.Y,
@@ -78,36 +53,56 @@ const TreeMap: React.FunctionComponent = () => {
 	}, []);
 
 	useEffect(() => {
-		if (!targetOffset || !wind.props.data) {
+		if (!targetOffset) {
 			return;
 		}
-
-		// TODO: setPolyWind rotation
-
-		setWind(
-			new LineLayer({
-				id: 'flight-paths',
-				data: scatterplotData,
-				opacity: 0.8,
-				getSourcePosition: d => [d.longitude, d.latitude],
-				getTargetPosition: d => getTargetOffsetPosition(d, targetOffset),
-				getColor: tree => colors.getColor(tree.color),
-				updateTriggers: {
-					getTargetPosition: d => getTargetOffsetPosition(d, targetOffset),
-				},
+		const trees: any = [];
+		scatterplotData?.forEach(tree => {
+			const h3Index = h3.geoToH3(tree.latitude, tree.longitude, hexSize);
+			const polygon = getWindLayerCoordinates(tree.longitude, tree.latitude, WIND_POWER, targetOffset);
+			const hexagons = h3.polyfill(polygon, hexSize);
+			const thex = hexagons.map(hex => {
+				const opacity = 255 - h3.h3Distance(h3Index, hex) * (100 / WIND_POWER);
+				return {
+					mean: 73.333,
+					opacity: opacity < 0 ? 0 : opacity,
+					hex: hex,
+					color: colors.getColor(tree.color),
+				};
+			});
+			trees.push(...thex);
+		});
+		if (!trees.length) {
+			return;
+		}
+		setPolyWind(
+			new H3HexagonLayer({
+				id: 'h3-wind',
+				data: trees,
+				pickable: true,
+				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+				// @ts-ignore
+				wireframe: false,
+				filled: true,
+				extruded: true,
+				elevationScale: 20,
+				getHexagon: d => d.hex,
+				getFillColor: d => [...d.color, d.opacity],
+				getElevation: 0,
 			})
 		);
 	}, [targetOffset]);
 
 	return (
 		<>
-			<Compass callback={setTargetOffset} />
+			<Compass callbackAngle={setTargetOffset} />
 			<DeckGL
 				{...deckGLSize}
 				initialViewState={initialViewState}
 				layers={[trees, polyWind]}
 				effects={[new LightingEffect({})]}
 				controller
+				onClick={info => console.log(info)}
 			>
 				<StaticMap {...mapboxSize} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} mapStyle={MAPBOX_THEME} />
 			</DeckGL>
