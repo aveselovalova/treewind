@@ -3,14 +3,13 @@ import React, { useState, useRef } from 'react';
 import './Compass.scss';
 
 import { Icon } from 'components/Icon/Icon';
-import { ICoordinate } from '../../helpers/interfaces';
-import { calculateWebDegree, getWindOffset } from '../../helpers/utils';
+import { calculateWebDegree } from '../../helpers/utils';
 
 interface ICompassProps {
-	callback: (offset: ICoordinate) => void;
+	callbackAngle(degrees: number);
 }
 
-const Compass: React.FunctionComponent<ICompassProps> = ({ callback }) => {
+const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 	const [isDragged, setIsDragged] = useState(false);
 	const [rotation, setRotation] = useState(-90);
 	const rotateRef = useRef<HTMLDivElement>(null);
@@ -28,25 +27,24 @@ const Compass: React.FunctionComponent<ICompassProps> = ({ callback }) => {
 		const centerY = offsetTop + offsetHeight / 2;
 		const radians = Math.atan2(pageX - centerX, pageY - centerY);
 		setRotation(calculateWebDegree(radians));
+	};
 
-		const windPower = 0.008;
-		callback(getWindOffset(windPower, radians));
+	const requestCallback = () => {
+		if (isDragged) {
+			callbackAngle(rotation);
+		}
+		setIsDragged(false);
 	};
 
 	return (
-		<div
-			className='compass'
-			onMouseMove={onMove}
-			onMouseUp={() => setIsDragged(false)}
-			onMouseLeave={() => setIsDragged(false)}
-		>
+		<div className='compass' onMouseMove={onMove} onMouseUp={requestCallback} onMouseLeave={requestCallback}>
 			<div
 				className='compass__rose'
 				ref={rotateRef}
 				style={{ transform: `rotate(${rotation}deg)` }}
 				onMouseDown={() => setIsDragged(true)}
-				onMouseUp={() => setIsDragged(false)}
-				onMouseLeave={() => setIsDragged(false)}
+				onMouseUp={requestCallback}
+				onMouseLeave={requestCallback}
 			>
 				<Icon name='compass-pointer' title='pointer' className='compass__pointer' />
 			</div>

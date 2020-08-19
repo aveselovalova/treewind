@@ -1,16 +1,8 @@
-export enum Quarter {
-	First,
-	Second,
-	Third,
-	Fourth,
-}
-
 export interface ICoordinate {
 	latitude: number;
 	longitude: number;
 
 	color?: string;
-	quarter?: Quarter;
 }
 
 export interface ISize {

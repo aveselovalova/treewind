@@ -2,8 +2,8 @@ import { token as MAPBOX_ACCESS_TOKEN } from './mapToken';
 import { ICoordinate, ISize } from './interfaces';
 
 const mapCenter: ICoordinate = {
-	longitude: 13.3058,
-	latitude: 52.6342,
+	longitude: 13.288302837149901,
+	latitude: 52.6586786825698,
 };
 //13.2883028371499, 52.6586786825698
 const MAPBOX_THEME = 'mapbox://styles/mapbox/dark-v10';
