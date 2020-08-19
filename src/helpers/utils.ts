@@ -2,81 +2,61 @@ import { COORDINATES_OFFSET, LATITUDE_WIND_INCREMENT, MIN_POINTS_IN_POLYGON } fr
 
 export const calculateWebDegree = (radians: number) => radians * (180 / Math.PI) * -1 + 90;
 
-const fibonacci = (n: number) => (n <= 1 ? n : fibonacci(n - 1) + fibonacci(n - 2));
+const fibonacci = (n: number) => {
+	let preNumb = 0,
+		res = 1;
+	while (n-- > 1) {
+		const tmp = preNumb;
+		preNumb = res;
+		res += tmp;
+	}
+	return res;
+};
 
 const generateFibonacciLongitudes = (longitude: number, windPower = 0): number[] => {
 	let fibNum = 3;
-	const longitudes: number[] = [longitude];
-	let arrIndex = 1;
-	while (fibNum < MIN_POINTS_IN_POLYGON + (windPower !== 0 ? windPower : 0)) {
-		longitudes.push(fibonacci(fibNum) * COORDINATES_OFFSET + longitudes[arrIndex - 1]);
+	const longitudes: number[] = [];
+	let arrIndex = 0;
+	const windPoints = MIN_POINTS_IN_POLYGON + (windPower !== 0 ? windPower : 0);
+	while (fibNum < windPoints) {
+		longitudes.push(
+			fibonacci(fibNum) * COORDINATES_OFFSET + (arrIndex === 0 ? longitude : longitudes[arrIndex - 1])
+		);
 		fibNum++;
 		arrIndex++;
 	}
-	return longitudes.splice(1);
+	return longitudes;
 };
 
-const generateLeftFunction = (
-	longitudes: number[],
-	polygon: number[][],
-	increment: number,
-	shadow?: boolean
-): number[][] => {
-	const updatedPoly = polygon;
-	longitudes.forEach((lon, key) => {
-		// значения должны повторяться для выравнивания графика функции
-		if (shadow) {
-			if (key !== longitudes.length - 1) {
-				updatedPoly.push([lon, updatedPoly[key][1] + increment]);
-			}
-		} else {
-			updatedPoly.push([
-				lon,
-				key === longitudes.length - 1 ? updatedPoly[key][1] : updatedPoly[key][1] + increment,
-			]);
+const generateFunction = (windLongitudes: number[], latitude, longitude, increment: number): number[][] => {
+	const l = [[latitude, longitude]];
+	const r: number[][] = [];
+	const isLastPoint = windLongitudes.length - 1;
+	for (let i = 0; i < windLongitudes.length; i++) {
+		const currentLat = l[i][0];
+		const currentLon = windLongitudes[i];
+		l.push([i === isLastPoint ? currentLat : currentLat + increment, currentLon]);
+
+		let item = latitude - LATITUDE_WIND_INCREMENT * (i + 1);
+		if (i === isLastPoint) {
+			item = r[r.length - 1][0];
 		}
-	});
-	return updatedPoly;
-};
-const generateRightFunction = (
-	longitudes: number[],
-	polygon: number[][],
-	latitude: number,
-	shadow?: boolean
-): number[][] => {
-	const updatedPoly = polygon;
-	const longitudesCount = longitudes.length - 1;
-	for (let i = longitudesCount; i >= 0; i--) {
-		let item = latitude - LATITUDE_WIND_INCREMENT * i;
-		if (i === longitudesCount - 1 && !shadow) {
-			// значения должны повторяться для выравнивания графика функции
-			item = updatedPoly[updatedPoly.length - 1][1];
-		} else if (i < longitudesCount - 1) {
-			item = latitude - LATITUDE_WIND_INCREMENT * (i + 1);
-		}
-		updatedPoly.push([longitudes[i], item]);
+		r.push([item, currentLon]);
 	}
-	return updatedPoly;
+	return [...l, ...r.reverse()];
 };
 
-const toRadians = degree => degree * (Math.PI / 180);
+export const toRadians = degree => degree * (Math.PI / 180);
 
-function rotate(treeLon, treeLat, x, y, degree) {
-	const radians = toRadians(degree);
+function rotate(treeLon, treeLat, x, y, radians) {
 	const cos = Math.cos(radians);
 	const sin = Math.sin(radians);
-	const nx = cos * (x - treeLon) + sin * (y - treeLat) + treeLon;
-	const ny = cos * (y - treeLat) - sin * (x - treeLon) + treeLat;
-	return [nx, ny];
+	return [cos * (y - treeLat) - sin * (x - treeLon) + treeLat, cos * (x - treeLon) + sin * (y - treeLat) + treeLon];
 }
 
-export const getWindLayerCoordinates = (longitude: number, latitude: number, windPower = 0, degree?) => {
-	// пр часовой стрелке
-	const longitudes = generateFibonacciLongitudes(longitude, windPower);
-
-	const l = generateLeftFunction(longitudes, [[longitude, latitude]], LATITUDE_WIND_INCREMENT);
-	const r = generateRightFunction(longitudes, l, latitude);
-	const rotated = r.map(a => rotate(longitude, latitude, a[0], a[1], degree)); // angle has +90 degrees offset
-	const a = [...rotated, [longitude, latitude]];
-	return a.map(item => [item[1], item[0]]);
+export const getWindLayerCoordinates = (longitude: number, latitude: number, windPower = 0, radians?) => {
+	const longitudes = generateFibonacciLongitudes(longitude, windPower); // web 0 === 90 of azimuth (->)
+	const generated = generateFunction(longitudes, latitude, longitude, LATITUDE_WIND_INCREMENT);
+	const rotated = generated.map(a => rotate(longitude, latitude, a[1], a[0], radians)); // angle has +90 degrees offset
+	return [...rotated, [latitude, longitude]];
 };

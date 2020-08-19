@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import './Compass.scss';
 
 import { Icon } from 'components/Icon/Icon';
-import { calculateWebDegree } from '../../helpers/utils';
+import { calculateWebDegree, toRadians } from '../../helpers/utils';
 
 interface ICompassProps {
 	callbackAngle(degrees: number);
@@ -11,7 +11,7 @@ interface ICompassProps {
 
 const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 	const [isDragged, setIsDragged] = useState(false);
-	const [rotation, setRotation] = useState(-90);
+	const [radians, setRadians] = useState(3.15);
 	const rotateRef = useRef<HTMLDivElement>(null);
 
 	const onMove = event => {
@@ -25,13 +25,12 @@ const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 
 		const centerX = offsetLeft + offsetWidth / 2;
 		const centerY = offsetTop + offsetHeight / 2;
-		const radians = Math.atan2(pageX - centerX, pageY - centerY);
-		setRotation(calculateWebDegree(radians));
+		setRadians(Math.atan2(pageX - centerX, pageY - centerY));
 	};
 
 	const requestCallback = () => {
 		if (isDragged) {
-			callbackAngle(rotation);
+			callbackAngle(-radians + toRadians(90));
 		}
 		setIsDragged(false);
 	};
@@ -41,7 +40,7 @@ const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 			<div
 				className='compass__rose'
 				ref={rotateRef}
-				style={{ transform: `rotate(${rotation}deg)` }}
+				style={{ transform: `rotate(${calculateWebDegree(radians)}deg)` }}
 				onMouseDown={() => setIsDragged(true)}
 				onMouseUp={requestCallback}
 				onMouseLeave={requestCallback}

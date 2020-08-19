@@ -6,6 +6,7 @@ import { LightingEffect, Layer } from '@deck.gl/core';
 import { StaticMap } from 'react-map-gl';
 import * as d3 from 'd3';
 import * as h3 from 'h3-js';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 import { ICoordinate } from 'helpers/interfaces';
 import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapboxSize } from 'helpers/map';
@@ -14,12 +15,13 @@ import { colors } from 'helpers/colors';
 import Compass from 'components/Compass/Compass';
 import { getWindLayerCoordinates } from '../../helpers/utils';
 
-const WIND_POWER = 2; // 1 - 10
+const WIND_POWER = 5; // 1 - 10
 const hexSize = 12; // 14 - smallest
+const colorFade = 100 / WIND_POWER;
 
 const TreeMap: React.FunctionComponent = () => {
 	const [targetOffset, setTargetOffset] = useState<number>();
-	const [scatterplotData, setScatterplotData] = useState<ICoordinate[]>();
+	const [scatterplotData, setScatterplotData] = useState<ICoordinate[]>([]);
 	const [trees, setTrees] = useState<Layer<any>>(new ScatterplotLayer({}));
 	const [polyWind, setPolyWind] = useState<any>(null);
 
@@ -43,7 +45,7 @@ const TreeMap: React.FunctionComponent = () => {
 					setTrees(
 						new ScatterplotLayer({
 							data: scatterplotData,
-							getColor: tree => colors.getColor(tree.color),
+							getFillColor: tree => colors.getColor(tree.color),
 							getPosition: tree => [tree.longitude, tree.latitude],
 							radiusScale: 4,
 						})
@@ -53,25 +55,20 @@ const TreeMap: React.FunctionComponent = () => {
 	}, []);
 
 	useEffect(() => {
-		if (!targetOffset) {
+		if (!targetOffset && !scatterplotData.length) {
 			return;
 		}
 		const trees: any = [];
-		scatterplotData?.forEach(tree => {
+		console.time('hex');
+		scatterplotData.forEach(tree => {
 			const h3Index = h3.geoToH3(tree.latitude, tree.longitude, hexSize);
 			const polygon = getWindLayerCoordinates(tree.longitude, tree.latitude, WIND_POWER, targetOffset);
 			const hexagons = h3.polyfill(polygon, hexSize);
-			const thex = hexagons.map(hex => {
-				const opacity = 255 - h3.h3Distance(h3Index, hex) * (100 / WIND_POWER);
-				return {
-					mean: 73.333,
-					opacity: opacity < 0 ? 0 : opacity,
-					hex: hex,
-					color: colors.getColor(tree.color),
-				};
-			});
-			trees.push(...thex);
+			const color = colors.getColor(tree.color);
+			trees.push(...hexagons.map(hex => ({ opacity: h3.h3Distance(h3Index, hex) * colorFade, hex, color })));
 		});
+		console.timeEnd('hex');
+
 		if (!trees.length) {
 			return;
 		}
@@ -87,7 +84,7 @@ const TreeMap: React.FunctionComponent = () => {
 				extruded: true,
 				elevationScale: 20,
 				getHexagon: d => d.hex,
-				getFillColor: d => [...d.color, d.opacity],
+				getFillColor: d => [...d.color, 255 - d.opacity < 0 ? 0 : 255 - d.opacity],
 				getElevation: 0,
 			})
 		);
@@ -102,7 +99,6 @@ const TreeMap: React.FunctionComponent = () => {
 				layers={[trees, polyWind]}
 				effects={[new LightingEffect({})]}
 				controller
-				onClick={info => console.log(info)}
 			>
 				<StaticMap {...mapboxSize} mapboxApiAccessToken={MAPBOX_ACCESS_TOKEN} mapStyle={MAPBOX_THEME} />
 			</DeckGL>
