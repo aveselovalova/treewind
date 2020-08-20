@@ -12,17 +12,19 @@ import { ICoordinate } from 'helpers/interfaces';
 import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapboxSize } from 'helpers/map';
 import { colors } from 'helpers/colors';
 
-import Compass from 'components/Compass/Compass';
+import Sidebar from 'components/Sidebar/Sidebar';
 import { getWindLayerCoordinates } from '../../helpers/utils';
 
 const WIND_POWER = 5; // 1 - 10
-const hexSize = 12; // 14 - smallest
-const colorFade = 100 / WIND_POWER;
+const hexSize = 11; // 14 - smallest
+const colorFade = 100 / (WIND_POWER + 20);
 
 const TreeMap: React.FunctionComponent = () => {
 	const [targetOffset, setTargetOffset] = useState<number>();
+	const [initialData, setInitialData] = useState<ICoordinate[]>([]);
 	const [scatterplotData, setScatterplotData] = useState<ICoordinate[]>([]);
-	const [trees, setTrees] = useState<Layer<any>>(new ScatterplotLayer({}));
+	const [uniqueTrees, setuniqueTrees] = useState<string[]>([]);
+	const [trees, setTrees] = useState(new ScatterplotLayer({}));
 	const [polyWind, setPolyWind] = useState<any>(null);
 
 	useEffect(() => {
@@ -36,12 +38,14 @@ const TreeMap: React.FunctionComponent = () => {
 				.then((scatterplotData: ICoordinate[]) => {
 					// TODO: prepare data;
 					setScatterplotData(scatterplotData);
-					const uniqueTree: string[] = d3
+					setInitialData(scatterplotData);
+					const uniqueTreeArr: string[] = d3
 						.map(scatterplotData, tree => tree.color || '')
 						.keys()
 						.filter(tree => tree);
 					// TODO: use localstorage;
-					colors.generateColors(uniqueTree);
+					setuniqueTrees(uniqueTreeArr);
+					colors.generateColors(uniqueTreeArr);
 					setTrees(
 						new ScatterplotLayer({
 							data: scatterplotData,
@@ -65,7 +69,12 @@ const TreeMap: React.FunctionComponent = () => {
 			const polygon = getWindLayerCoordinates(tree.longitude, tree.latitude, WIND_POWER, targetOffset);
 			const hexagons = h3.polyfill(polygon, hexSize);
 			const color = colors.getColor(tree.color);
-			trees.push(...hexagons.map(hex => ({ opacity: h3.h3Distance(h3Index, hex) * colorFade, hex, color })));
+			trees.push(
+				...hexagons.map(hex => {
+					const opacity = 255 - h3.h3Distance(h3Index, hex) * (100 / WIND_POWER) - 150;
+					return { opacity, hex, color };
+				})
+			);
 		});
 		console.timeEnd('hex');
 
@@ -84,15 +93,32 @@ const TreeMap: React.FunctionComponent = () => {
 				extruded: true,
 				elevationScale: 20,
 				getHexagon: d => d.hex,
-				getFillColor: d => [...d.color, 255 - d.opacity < 0 ? 0 : 255 - d.opacity],
+				getFillColor: d => [...d.color, d.opacity < 0 ? 0 : d.opacity],
 				getElevation: 0,
 			})
 		);
 	}, [targetOffset]);
 
+	const filterCallback = filteredTrees => {
+		if (filteredTrees?.length !== uniqueTrees) {
+			const filtered = initialData.filter(value => filteredTrees.some(t => t === value.color));
+			setScatterplotData(filtered);
+			setTrees(
+				new ScatterplotLayer({
+					data: filtered,
+					getFillColor: tree => colors.getColor(tree.color),
+					getPosition: tree => [tree.longitude, tree.latitude],
+					radiusScale: 4,
+				})
+			);
+		}
+	};
+
 	return (
 		<>
-			<Compass callbackAngle={setTargetOffset} />
+			{uniqueTrees?.length && (
+				<Sidebar callbackAngle={setTargetOffset} uniqueTrees={uniqueTrees} filterCallback={filterCallback} />
+			)}
 			<DeckGL
 				{...deckGLSize}
 				initialViewState={initialViewState}
