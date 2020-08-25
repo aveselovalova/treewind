@@ -18,7 +18,7 @@ const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 		if (isMouseUp) {
 			callbackAngle(radians - toRadians(90));
 		}
-	}, [isMouseUp, radians]);
+	}, [isMouseUp, radians, callbackAngle]);
 
 	function down(event) {
 		setIsMouseUp(false);
