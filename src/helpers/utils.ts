@@ -1,6 +1,6 @@
 import { COORDINATES_OFFSET, LATITUDE_WIND_INCREMENT, MIN_POINTS_IN_POLYGON } from './constants';
 
-export const calculateWebDegree = (radians: number) => -radians * (180 / Math.PI); // radians * (180 / Math.PI) * -1 + 90;
+export const calculateWebDegree = (radians: number) => radians * (180 / Math.PI);
 
 const fibonacci = (n: number) => {
 	let preNumb = 0,

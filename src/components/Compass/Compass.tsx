@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 import './Compass.scss';
 
@@ -9,41 +9,64 @@ interface ICompassProps {
 }
 
 const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
-	const [isDragged, setIsDragged] = useState(false);
+	const [isMouseUp, setIsMouseUp] = useState(true);
+	const [previousRad, setPreviousRad] = useState(0);
 	const [radians, setRadians] = useState(0);
 	const rotateRef = useRef<HTMLDivElement>(null);
 
-	const onMove = event => {
-		// TODO: fix it
-		event.preventDefault();
-		const rotator = rotateRef?.current;
-		if (!isDragged || !rotator) {
-			return;
+	useEffect(() => {
+		if (isMouseUp) {
+			callbackAngle(radians - toRadians(90));
 		}
-		const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = rotator;
-		const { pageX, pageY } = event;
+	}, [isMouseUp, radians]);
 
-		const centerX = offsetLeft + offsetWidth / 2;
-		const centerY = offsetTop + offsetHeight / 2;
-		setRadians(Math.atan2(pageX - centerX, pageY - centerY));
+	function down(event) {
+		setIsMouseUp(false);
+		const offsetRad = getRotation(event);
+		setPreviousRad(offsetRad);
+		window.addEventListener('mousemove', onMove);
+		window.addEventListener('mouseup', onMouseUp);
+	}
+
+	const onMove = event => {
+		const newRad = getRotation(event);
+		setRadians(radians + newRad - previousRad);
+		setPreviousRad(newRad);
 	};
 
-	const requestCallback = () => {
-		if (isDragged) {
-			callbackAngle(-radians - toRadians(90));
+	const onMouseUp = () => {
+		setIsMouseUp(true);
+		window.removeEventListener('mousemove', onMove);
+		window.removeEventListener('mouseup', onMouseUp);
+	};
+
+	function getRotation(event) {
+		const rotator = rotateRef?.current;
+		if (!rotator) {
+			return 0;
 		}
-		setIsDragged(false);
+		const position = getMousePosition(event, rotator);
+		return Math.atan2(position.y - rotator.clientHeight * 0.5, position.x - rotator.clientWidth * 0.5);
+	}
+
+	const getMousePosition = ({ pageX, pageY }, pointer) => {
+		let totalOffsetX = 0;
+		let totalOffsetY = 0;
+		do {
+			totalOffsetX += pointer.offsetLeft - pointer.scrollLeft;
+			totalOffsetY += pointer.offsetTop - pointer.scrollTop;
+		} while ((pointer = pointer.offsetParent));
+
+		return { x: pageX - totalOffsetX, y: pageY - totalOffsetY };
 	};
 
 	return (
-		<div className='compass' onMouseMove={onMove} onMouseUp={requestCallback} onMouseLeave={requestCallback}>
+		<div className='compass'>
 			<div
-				className='compass__rose'
+				className='compass__pointer'
 				ref={rotateRef}
 				style={{ transform: `rotate(${calculateWebDegree(radians)}deg)` }}
-				onMouseDown={() => setIsDragged(true)}
-				onMouseUp={requestCallback}
-				onMouseLeave={requestCallback}
+				onMouseDown={down}
 			/>
 		</div>
 	);
