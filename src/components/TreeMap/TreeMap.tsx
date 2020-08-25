@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
-import { LightingEffect, Layer } from '@deck.gl/core';
+import { LightingEffect } from '@deck.gl/core';
 import { StaticMap } from 'react-map-gl';
 import * as d3 from 'd3';
 import * as h3 from 'h3-js';
@@ -13,11 +13,10 @@ import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapbox
 import { colors } from 'helpers/colors';
 
 import Sidebar from 'components/Sidebar/Sidebar';
-import { getWindLayerCoordinates } from '../../helpers/utils';
+import { getWindLayerCoordinatesGeoJson } from '../../helpers/utils';
 
-const WIND_POWER = 5; // 1 - 10
-const hexSize = 11; // 14 - smallest
-const colorFade = 100 / (WIND_POWER + 20);
+const WIND_POWER = 3; // 1 - 10
+const hexSize = 12; // 14 - smallest
 
 const TreeMap: React.FunctionComponent = () => {
 	const [targetOffset, setTargetOffset] = useState<number>();
@@ -63,21 +62,12 @@ const TreeMap: React.FunctionComponent = () => {
 			return;
 		}
 		const trees: any = [];
-		console.time('hex');
 		scatterplotData.forEach(tree => {
 			const h3Index = h3.geoToH3(tree.latitude, tree.longitude, hexSize);
-			const polygon = getWindLayerCoordinates(tree.longitude, tree.latitude, WIND_POWER, targetOffset);
-			const hexagons = h3.polyfill(polygon, hexSize);
-			const color = colors.getColor(tree.color);
-			trees.push(
-				...hexagons.map(hex => {
-					const opacity = 255 - h3.h3Distance(h3Index, hex) * (100 / WIND_POWER) - 150;
-					return { opacity, hex, color };
-				})
-			);
+			const polygon = getWindLayerCoordinatesGeoJson(tree.longitude, tree.latitude, WIND_POWER, targetOffset);
+			const hexagons = h3.polyfill(polygon, hexSize, true);
+			trees.push(...hexagons.map(hex => ({ opacity: h3.h3Distance(h3Index, hex), hex, color: tree.color })));
 		});
-		console.timeEnd('hex');
-
 		if (!trees.length) {
 			return;
 		}
@@ -93,7 +83,10 @@ const TreeMap: React.FunctionComponent = () => {
 				extruded: true,
 				elevationScale: 20,
 				getHexagon: d => d.hex,
-				getFillColor: d => [...d.color, d.opacity < 0 ? 0 : d.opacity],
+				getFillColor: d => {
+					const o = 255 - d.opacity * (100 / WIND_POWER);
+					return [...colors.getColor(d.color), o > 0 ? o : 10];
+				},
 				getElevation: 0,
 			})
 		);
