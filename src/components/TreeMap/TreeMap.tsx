@@ -8,20 +8,17 @@ import * as d3 from 'd3';
 import * as h3 from 'h3-js';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-import { ICoordinate } from 'helpers/interfaces';
+import { ICoordinate, IH3Point } from 'helpers/interfaces';
 import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapboxSize } from 'helpers/map';
 import { colors } from 'helpers/colors';
 
 import Sidebar from 'components/Sidebar/Sidebar';
 import { getWindLayerCoordinatesGeoJson } from '../../helpers/utils';
 
-const WIND_POWER = 3; // 1 - 10
 const hexSize = 12; // 14 - smallest
 
 const TreeMap: React.FunctionComponent = () => {
-	const [targetOffset, setTargetOffset] = useState<number>();
 	const [initialData, setInitialData] = useState<ICoordinate[]>([]);
-	const [scatterplotData, setScatterplotData] = useState<ICoordinate[]>([]);
 	const [uniqueTrees, setuniqueTrees] = useState<string[]>([]);
 	const [trees, setTrees] = useState(new ScatterplotLayer({}));
 	const [polyWind, setPolyWind] = useState<any>(null);
@@ -36,7 +33,6 @@ const TreeMap: React.FunctionComponent = () => {
 				}))
 				.then((scatterplotData: ICoordinate[]) => {
 					// TODO: prepare data;
-					setScatterplotData(scatterplotData);
 					setInitialData(scatterplotData);
 					const uniqueTreeArr: string[] = d3
 						.map(scatterplotData, tree => tree.color || '')
@@ -57,51 +53,61 @@ const TreeMap: React.FunctionComponent = () => {
 		});
 	}, []);
 
-	useEffect(() => {
-		if (!targetOffset && !scatterplotData.length) {
-			return;
+	const filterTrees = (filteredTreeNames: string[]): ICoordinate[] => {
+		if (filteredTreeNames?.length !== uniqueTrees?.length) {
+			return initialData.filter(value => filteredTreeNames.some(t => t === value.color));
 		}
-		const trees: any = [];
-		scatterplotData.forEach(tree => {
+		return initialData;
+	};
+
+	const calculateHex = (filteredTrees: ICoordinate[], windPower, offsetAngle): IH3Point[] => {
+		const trees: IH3Point[] = [];
+		filteredTrees.forEach(tree => {
 			const h3Index = h3.geoToH3(tree.latitude, tree.longitude, hexSize);
-			const polygon = getWindLayerCoordinatesGeoJson(tree.longitude, tree.latitude, WIND_POWER, targetOffset);
+			const polygon = getWindLayerCoordinatesGeoJson(tree.longitude, tree.latitude, windPower, offsetAngle);
 			const hexagons = h3.polyfill(polygon, hexSize, true);
-			trees.push(...hexagons.map(hex => ({ opacity: h3.h3Distance(h3Index, hex), hex, color: tree.color })));
+			const tmp: IH3Point[] = [];
+			hexagons.forEach(hex => {
+				const direction = h3.h3Distance(h3Index, hex);
+				const opacity = 255 - direction * (80 / windPower);
+				if (opacity > 0) {
+					tmp.push({ opacity: h3.h3Distance(h3Index, hex), hex, color: tree.color });
+				}
+			});
+			trees.push(...tmp);
 		});
-		if (!trees.length) {
-			return;
-		}
-		setPolyWind(
-			new H3HexagonLayer({
-				id: 'h3-wind',
-				data: trees,
-				pickable: true,
-				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-				// @ts-ignore
-				wireframe: false,
-				filled: true,
-				extruded: true,
-				elevationScale: 20,
-				getHexagon: d => d.hex,
-				getFillColor: d => {
-					const o = 255 - d.opacity * (100 / WIND_POWER);
-					return [...colors.getColor(d.color), o > 0 ? o : 10];
-				},
-				getElevation: 0,
+		return trees;
+	};
+
+	const getWindSettings = (windPower: number, directionRadiansAngle: number, filteredTrees: string[]) => {
+		const filtered = filterTrees(filteredTrees);
+		setTrees(
+			new ScatterplotLayer({
+				data: filtered,
+				getFillColor: tree => colors.getColor(tree.color),
+				getPosition: tree => [tree.longitude, tree.latitude],
+				radiusScale: 4,
 			})
 		);
-	}, [targetOffset]);
-
-	const filterCallback = filteredTrees => {
-		if (filteredTrees?.length !== uniqueTrees) {
-			const filtered = initialData.filter(value => filteredTrees.some(t => t === value.color));
-			setScatterplotData(filtered);
-			setTrees(
-				new ScatterplotLayer({
-					data: filtered,
-					getFillColor: tree => colors.getColor(tree.color),
-					getPosition: tree => [tree.longitude, tree.latitude],
-					radiusScale: 4,
+		const trees = calculateHex(filtered, windPower, directionRadiansAngle);
+		if (trees?.length) {
+			setPolyWind(
+				new H3HexagonLayer({
+					id: 'h3-wind',
+					data: trees,
+					pickable: true,
+					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+					// @ts-ignore
+					wireframe: false,
+					filled: true,
+					extruded: true,
+					elevationScale: 20,
+					getHexagon: d => d.hex,
+					getFillColor: d => {
+						const o = 255 - d.opacity * (80 / windPower);
+						return [...colors.getColor(d.color), o > 0 ? o : 10];
+					},
+					getElevation: 0,
 				})
 			);
 		}
@@ -109,9 +115,7 @@ const TreeMap: React.FunctionComponent = () => {
 
 	return (
 		<>
-			{uniqueTrees?.length && (
-				<Sidebar callbackAngle={setTargetOffset} uniqueTrees={uniqueTrees} filterCallback={filterCallback} />
-			)}
+			{uniqueTrees?.length && <Sidebar uniqueTrees={uniqueTrees} getWindSettings={getWindSettings} />}
 			<DeckGL
 				{...deckGLSize}
 				initialViewState={initialViewState}

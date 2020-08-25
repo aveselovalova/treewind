@@ -1,27 +1,35 @@
 .compass {
-	position: fixed;
-	top: 20px;
-	left: 20px;
+	position: relative;
 	background: url(../../resources/icons/compass-rose.svg) center no-repeat;
 	background-origin: content-box;
-	width: 130px;
-	height: 130px;
-	padding: 10px;
+	width: 140px;
+	height: 140px;
+	background-size: contain;
 
 	&__rose {
 		position: absolute;
-		width: 115px;
-		height: 115px;
-		top: 16px;
-		left: 16px;
+		top: 4px;
+		left: 4px;
+		width: calc(100% - 10px);
+		height: calc(100% - 10px);
+		background: url(../../resources/icons/compass-pointer.svg) center no-repeat;
+		background-size: contain;
 	}
-
-	&__pointer {
-		position: absolute;
-		width: 30px;
-		height: 100%;
-		top: -43%;
-		right: 31%;
-		transform: rotate(90deg);
-	}
+	//
+	//&__rose {
+	//	position: absolute;
+	//	width: 115px;
+	//	height: 115px;
+	//	top: 16px;
+	//	left: 16px;
+	//}
+	//
+	//&__pointer {
+	//	position: absolute;
+	//	width: 30px;
+	//	height: 100%;
+	//	top: -43%;
+	//	right: 31%;
+	//	transform: rotate(90deg);
+	//}
 }

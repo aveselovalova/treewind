@@ -25,3 +25,4 @@ yarn-error.log*
 
 *.d.ts
 /src/helpers/mapToken.ts
+/docs/

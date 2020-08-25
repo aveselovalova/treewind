@@ -14,3 +14,10 @@ export interface IColor {
 	name: string;
 	color: [number, number, number];
 }
+
+export interface IH3Point {
+	opacity: number;
+	hex: string;
+
+	color?: string;
+}

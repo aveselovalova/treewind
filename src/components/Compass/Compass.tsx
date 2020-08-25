@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 
 import './Compass.scss';
 
-import { Icon } from 'components/Icon/Icon';
 import { calculateWebDegree, toRadians } from '../../helpers/utils';
 
 interface ICompassProps {
@@ -11,10 +10,11 @@ interface ICompassProps {
 
 const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 	const [isDragged, setIsDragged] = useState(false);
-	const [radians, setRadians] = useState(3.15);
+	const [radians, setRadians] = useState(0);
 	const rotateRef = useRef<HTMLDivElement>(null);
 
 	const onMove = event => {
+		// TODO: fix it
 		event.preventDefault();
 		const rotator = rotateRef?.current;
 		if (!isDragged || !rotator) {
@@ -30,7 +30,7 @@ const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 
 	const requestCallback = () => {
 		if (isDragged) {
-			callbackAngle(-radians + toRadians(90));
+			callbackAngle(-radians - toRadians(90));
 		}
 		setIsDragged(false);
 	};
@@ -44,9 +44,7 @@ const Compass: React.FunctionComponent<ICompassProps> = ({ callbackAngle }) => {
 				onMouseDown={() => setIsDragged(true)}
 				onMouseUp={requestCallback}
 				onMouseLeave={requestCallback}
-			>
-				<Icon name='compass-pointer' title='pointer' className='compass__pointer' />
-			</div>
+			/>
 		</div>
 	);
 };
