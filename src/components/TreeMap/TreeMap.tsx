@@ -23,7 +23,7 @@ const TreeMap: React.FunctionComponent = () => {
 	const [polyWind, setPolyWind] = useState<any>(null);
 
 	useEffect(() => {
-		import('../../resources/data/out.csv').then(async csvTrees => {
+		import('../../resources/data/fullTreesBerlin.csv').then(async csvTrees => {
 			await d3
 				.csv(csvTrees.default, (data: any) => ({
 					latitude: +data.Y,
@@ -60,51 +60,36 @@ const TreeMap: React.FunctionComponent = () => {
 	};
 
 	const calculateHex = (filteredTrees: ICoordinate[], windPower, offsetAngle) => {
-		const trees: IH3Point[] = [];
-		const promises = [];
-		filteredTrees.forEach(tree => {
-			const request = {
-				resolution: hexSize,
-				longitude: tree.longitude,
-				latitude: tree.latitude,
-				windPower: windPower,
-				offset: offsetAngle,
-				color: tree.color,
-			};
-			promises.push(
-				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-				// @ts-ignore
-				axios
-					.post('http://127.0.0.1:8000/hexagons', {
-						body: JSON.stringify(request),
+		const requestData = {
+			resolution: hexSize,
+			windPower: windPower,
+			offset: offsetAngle,
+			trees: filteredTrees,
+		};
+		axios
+			.post('http://127.0.0.1:8000/hexagons', {
+				body: JSON.stringify(requestData),
+			})
+			.then(({ data }) => {
+				const trees: IH3Point[] = JSON.parse(data.hex);
+				setPolyWind(
+					new H3HexagonLayer({
+						id: 'h3-wind',
+						data: trees,
+						pickable: true,
+						// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+						// @ts-ignore
+						wireframe: false,
+						filled: true,
+						extruded: true,
+						elevationScale: 20,
+						getHexagon: d => d.hex,
+						getFillColor: d => [...colors.getColor(d.color), d.opacity],
+						getElevation: 0,
 					})
-					.then(({ data }) => {
-						trees.push(...JSON.parse(data.hex));
-					})
-					.catch(err => console.log(err))
-			);
-		});
-		Promise.all(promises).then(() => {
-			setPolyWind(
-				new H3HexagonLayer({
-					id: 'h3-wind',
-					data: trees,
-					pickable: true,
-					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-					// @ts-ignore
-					wireframe: false,
-					filled: true,
-					extruded: true,
-					elevationScale: 20,
-					getHexagon: d => d.hex,
-					getFillColor: d => {
-						const o = 255 - d.opacity * (80 / windPower);
-						return [...colors.getColor(d.color), o > 0 ? o : 10];
-					},
-					getElevation: 0,
-				})
-			);
-		});
+				);
+			})
+			.catch(err => console.log(err));
 	};
 
 	const getWindSettings = (windPower: number, directionRadiansAngle: number, filteredTrees: string[]) => {
@@ -118,9 +103,7 @@ const TreeMap: React.FunctionComponent = () => {
 			})
 		);
 		console.log(filtered.length);
-		console.time('tree');
 		calculateHex(filtered, windPower, directionRadiansAngle);
-		console.timeEnd('tree');
 	};
 
 	return (
