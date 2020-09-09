@@ -5,7 +5,6 @@ import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import { LightingEffect } from '@deck.gl/core';
 import { StaticMap } from 'react-map-gl';
 import * as d3 from 'd3';
-import * as h3 from 'h3-js';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import axios from 'axios';
 
@@ -64,13 +63,13 @@ const TreeMap: React.FunctionComponent = () => {
 		const trees: IH3Point[] = [];
 		const promises = [];
 		filteredTrees.forEach(tree => {
-			const h3Index = h3.geoToH3(tree.latitude, tree.longitude, hexSize);
 			const request = {
 				resolution: hexSize,
 				longitude: tree.longitude,
 				latitude: tree.latitude,
 				windPower: windPower,
 				offset: offsetAngle,
+				color: tree.color,
 			};
 			promises.push(
 				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -80,16 +79,7 @@ const TreeMap: React.FunctionComponent = () => {
 						body: JSON.stringify(request),
 					})
 					.then(({ data }) => {
-						const hexagons = JSON.parse(data.hex);
-						const tmp: IH3Point[] = [];
-						hexagons.forEach(hex => {
-							const direction = h3.h3Distance(h3Index, hex);
-							const opacity = 255 - direction * (80 / windPower);
-							if (opacity > 0) {
-								tmp.push({ opacity: h3.h3Distance(h3Index, hex), hex, color: tree.color });
-							}
-						});
-						trees.push(...tmp);
+						trees.push(...JSON.parse(data.hex));
 					})
 					.catch(err => console.log(err))
 			);
