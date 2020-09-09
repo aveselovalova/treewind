@@ -14,7 +14,6 @@ import { MAPBOX_ACCESS_TOKEN, initialViewState, deckGLSize, MAPBOX_THEME, mapbox
 import { colors } from 'helpers/colors';
 
 import Sidebar from 'components/Sidebar/Sidebar';
-import { getWindLayerCoordinates } from '../../helpers/utils';
 
 const hexSize = 12; // 14 - smallest
 
@@ -25,7 +24,7 @@ const TreeMap: React.FunctionComponent = () => {
 	const [polyWind, setPolyWind] = useState<any>(null);
 
 	useEffect(() => {
-		import('../../resources/data/fullTreesBerlin.csv').then(async csvTrees => {
+		import('../../resources/data/out.csv').then(async csvTrees => {
 			await d3
 				.csv(csvTrees.default, (data: any) => ({
 					latitude: +data.Y,
@@ -66,9 +65,13 @@ const TreeMap: React.FunctionComponent = () => {
 		const promises = [];
 		filteredTrees.forEach(tree => {
 			const h3Index = h3.geoToH3(tree.latitude, tree.longitude, hexSize);
-			const polygon = getWindLayerCoordinates(tree.longitude, tree.latitude, windPower, offsetAngle);
-			const request = { resolution: hexSize, polygon };
-
+			const request = {
+				resolution: hexSize,
+				longitude: tree.longitude,
+				latitude: tree.latitude,
+				windPower: windPower,
+				offset: offsetAngle,
+			};
 			promises.push(
 				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 				// @ts-ignore
