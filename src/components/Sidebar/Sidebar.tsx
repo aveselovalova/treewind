@@ -10,10 +10,11 @@ import Compass from 'components/Compass/Compass';
 
 interface ICompassProps {
 	uniqueTrees: string[];
-	getWindSettings(windPower: number, directionRadiansAngle: number, trees: string[]);
+	onCalculate(windPower: number, directionRadiansAngle: number, trees: string[]);
+	onChecked(treeNames: string[]);
 }
 
-const Sidebar: React.FunctionComponent<ICompassProps> = ({ getWindSettings, uniqueTrees }) => {
+const Sidebar: React.FunctionComponent<ICompassProps> = ({ onCalculate, uniqueTrees, onChecked }) => {
 	const [checked, setChecked] = useState<string[]>([]);
 	const [windPower, setWindPower] = useState(5);
 	const [radians, setRadians] = useState<number>(0);
@@ -24,9 +25,7 @@ const Sidebar: React.FunctionComponent<ICompassProps> = ({ getWindSettings, uniq
 		}
 	}, [uniqueTrees]);
 
-	const calculate = () => {
-		getWindSettings(windPower, radians, checked);
-	};
+	const calculate = () => onCalculate(windPower, radians, checked);
 
 	return (
 		<div className='sidebar'>
@@ -58,8 +57,10 @@ const Sidebar: React.FunctionComponent<ICompassProps> = ({ getWindSettings, uniq
 				control={
 					<Checkbox
 						checked={checked?.length === uniqueTrees?.length}
-						onChange={event => {
-							setChecked(event.currentTarget.checked ? uniqueTrees : []);
+						onChange={({ currentTarget }) => {
+							const allTrees = currentTarget.checked ? uniqueTrees : [];
+							setChecked(allTrees);
+							onChecked(allTrees);
 						}}
 						color='primary'
 					/>
@@ -73,15 +74,18 @@ const Sidebar: React.FunctionComponent<ICompassProps> = ({ getWindSettings, uniq
 							control={
 								<Checkbox
 									checked={!!~checked.findIndex(ch => ch === tree)}
-									onChange={event => {
-										if (event.currentTarget.checked) {
-											setChecked([...checked, tree]);
+									onChange={({ currentTarget }) => {
+										let trees: string[] = [];
+										if (currentTarget.checked) {
+											trees = [...checked, tree];
 										} else {
 											const index = checked.indexOf(tree);
 											if (~index) {
-												setChecked([...checked.slice(0, index), ...checked.slice(index + 1)]);
+												trees = [...checked.slice(0, index), ...checked.slice(index + 1)];
 											}
 										}
+										setChecked(trees);
+										onChecked(trees);
 									}}
 									color='primary'
 								/>

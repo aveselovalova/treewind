@@ -1,6 +1,6 @@
 .compass {
 	position: relative;
-	background: url(../../resources/icons/compass-rose.svg) center no-repeat;
+	background: url(assets/compass-rose.svg) center no-repeat;
 	background-origin: content-box;
 	width: 140px;
 	height: 140px;
@@ -13,6 +13,6 @@
 	left: 4px;
 	width: calc(100% - 10px);
 	height: calc(100% - 30px);
-	background: url(../../resources/icons/compass-pointer.svg) center no-repeat;
+	background: url(assets/compass-pointer.svg) center no-repeat;
 	background-size: contain;
 }

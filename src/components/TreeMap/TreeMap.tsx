@@ -23,7 +23,7 @@ const TreeMap: React.FunctionComponent = () => {
 	const [polyWind, setPolyWind] = useState<any>(null);
 
 	useEffect(() => {
-		import('../../resources/data/fullTreesBerlin.csv').then(async csvTrees => {
+		import('./assets/100trees.csv').then(async csvTrees => {
 			await d3
 				.csv(csvTrees.default, (data: any) => ({
 					latitude: +data.Y,
@@ -67,7 +67,7 @@ const TreeMap: React.FunctionComponent = () => {
 			trees: filteredTrees,
 		};
 		axios
-			.post('http://127.0.0.1:8000/hexagons', {
+			.post('http://127.0.0.1:8000/get-hexagons', {
 				body: JSON.stringify(requestData),
 			})
 			.then(({ data }) => {
@@ -92,8 +92,8 @@ const TreeMap: React.FunctionComponent = () => {
 			.catch(err => console.log(err));
 	};
 
-	const getWindSettings = (windPower: number, directionRadiansAngle: number, filteredTrees: string[]) => {
-		const filtered = filterTrees(filteredTrees);
+	const filterTreesOnChecked = (treeNames: string[]): ICoordinate[] => {
+		const filtered = filterTrees(treeNames);
 		setTrees(
 			new ScatterplotLayer({
 				data: filtered,
@@ -102,13 +102,20 @@ const TreeMap: React.FunctionComponent = () => {
 				radiusScale: 4,
 			})
 		);
-		console.log(filtered.length);
+		console.log('TREES COUNT: ', filtered?.length);
+		return filtered;
+	};
+
+	const getWindSettings = (windPower: number, directionRadiansAngle: number, filteredTrees: string[]) => {
+		const filtered = filterTreesOnChecked(filteredTrees);
 		calculateHex(filtered, windPower, directionRadiansAngle);
 	};
 
 	return (
 		<>
-			{uniqueTrees?.length && <Sidebar uniqueTrees={uniqueTrees} getWindSettings={getWindSettings} />}
+			{uniqueTrees?.length && (
+				<Sidebar uniqueTrees={uniqueTrees} onCalculate={getWindSettings} onChecked={filterTreesOnChecked} />
+			)}
 			<DeckGL
 				{...deckGLSize}
 				initialViewState={initialViewState}
